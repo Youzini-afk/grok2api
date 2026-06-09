@@ -45,6 +45,7 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     TZ=Asia/Shanghai \
     VIRTUAL_ENV=/opt/venv \
     SERVER_HOST=0.0.0.0 \
+    SERVER_PORT=8000 \
     SERVER_WORKERS=1 \
     DATA_DIR=/app/data \
     LOG_DIR=/app/logs
@@ -74,10 +75,10 @@ COPY scripts ./scripts
 RUN mkdir -p /app/data /app/logs \
     && chmod +x /app/scripts/entrypoint.sh /app/scripts/init_storage.sh
 
-EXPOSE 8000 8080
+EXPOSE 8000
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=45s --retries=3 \
-    CMD ["sh", "-c", "python -c \"import os, urllib.request; port=os.getenv('PORT') or os.getenv('SERVER_PORT') or '8000'; urllib.request.urlopen(f'http://127.0.0.1:{port}/health', timeout=3).read()\""]
+    CMD ["sh", "-c", "python -c \"import os, urllib.request; port=os.getenv('SERVER_PORT') or os.getenv('PORT') or '8000'; urllib.request.urlopen(f'http://127.0.0.1:{port}/health', timeout=3).read()\""]
 
 ENTRYPOINT ["/app/scripts/entrypoint.sh"]
-CMD ["sh", "-c", "exec granian --interface asgi --host ${SERVER_HOST:-0.0.0.0} --port ${PORT:-${SERVER_PORT:-8000}} --workers ${SERVER_WORKERS:-1} app.main:app"]
+CMD ["sh", "-c", "exec granian --interface asgi --host ${SERVER_HOST:-0.0.0.0} --port ${SERVER_PORT:-${PORT:-8000}} --workers ${SERVER_WORKERS:-1} app.main:app"]

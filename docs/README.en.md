@@ -100,12 +100,13 @@ Recommended Zeabur settings:
 | Root Directory | `grok2api` if your connected repo has an outer wrapper directory |
 | Build Method | Dockerfile |
 | Volume | mount `/app/data` (required), optionally `/app/logs` |
-| Port | use Zeabur's injected `PORT`; no Dockerfile edit required |
+| Domain / Container Port | bind to `8000` |
 
 Recommended environment variables:
 
 ```env
 SERVER_HOST=0.0.0.0
+SERVER_PORT=8000
 SERVER_WORKERS=1
 ACCOUNT_STORAGE=local
 DATA_DIR=/app/data
@@ -120,7 +121,7 @@ GROK_APP_WEBUI_KEY=webui-password
 
 > Zeabur does not deploy `docker-compose.yml` directly. The WARP / Privoxy / FlareSolverr anti-blocking stack needs multiple containers and privileged networking, so it is not recommended for Zeabur. Use an external proxy if Zeabur's egress IP is blocked.
 
-> If Zeabur stays at “building” with empty logs, first check that Root Directory points to the directory containing `Dockerfile`, then confirm the current slim-based Dockerfile is being used instead of an old Alpine build.
+> If Zeabur stays at “building” with empty logs, first check that Root Directory points to the directory containing `Dockerfile`, then confirm the current slim-based Dockerfile is being used instead of an old Alpine build. If the public URL returns 502, make sure the domain is bound to container port `8000`, remove any stale `8080` binding from the old deployment, and redeploy.
 
 ### Option 4: From source
 

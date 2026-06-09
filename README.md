@@ -121,12 +121,13 @@ Zeabur 配置建议：
 | Root Directory | `grok2api`（如果仓库根目录外层还有一层目录） |
 | Build Method | Dockerfile |
 | Volume | 挂载到 `/app/data`（必须），可选 `/app/logs` |
-| Port | 使用 Zeabur 自动注入的 `PORT`，无需手动改 Dockerfile |
+| Domain / Container Port | 绑定到 `8000` |
 
 推荐环境变量：
 
 ```env
 SERVER_HOST=0.0.0.0
+SERVER_PORT=8000
 SERVER_WORKERS=1
 ACCOUNT_STORAGE=local
 DATA_DIR=/app/data
@@ -143,7 +144,7 @@ GROK_APP_WEBUI_KEY=前台访问密码
 > Zeabur 默认不能直接部署 `docker-compose.yml`。防封版依赖 WARP / Privoxy / FlareSolverr 多容器和特权网络能力，不建议直接放在 Zeabur 上跑。若 Zeabur 出口 IP 被 Cloudflare 风控，请配置外部代理，而不是使用 `docker-compose.warp.yml`。
 
 > [!TIP]
-> 如果 Zeabur 一直显示“构建中”且没有日志，优先检查 Root Directory 是否指向 Dockerfile 所在目录；其次确认已使用当前 Dockerfile（slim 版本），不要继续使用旧的 Alpine 构建层。
+> 如果 Zeabur 一直显示“构建中”且没有日志，优先检查 Root Directory 是否指向 Dockerfile 所在目录；其次确认已使用当前 Dockerfile（slim 版本），不要继续使用旧的 Alpine 构建层。若网页访问 502，请确认域名绑定的 Container Port 是 `8000`，并删除旧部署里残留的 `8080` 端口绑定后重新部署。
 
 ---
 
@@ -371,7 +372,7 @@ basic表示free账号，spuer和heavy 为付费
 | `LOG_FILE_ENABLED` | 写入本地文件日志 | `true` |
 | `SERVER_HOST` | 监听地址 | `0.0.0.0` |
 | `SERVER_PORT` | 监听端口 | `8000` |
-| `PORT` | 云平台注入端口；Dockerfile 优先使用它，未设置时回退到 `SERVER_PORT` | 空 |
+| `PORT` | 云平台可能注入的端口；Dockerfile 默认优先使用 `SERVER_PORT`，仅未设置时回退到它 | 空 |
 | `SERVER_WORKERS` | Granian worker 数量 | `1` |
 | `HOST_PORT` | Compose 宿主机映射端口 | `8000` |
 | `DATA_DIR` | 本地数据根目录 | `./data` |

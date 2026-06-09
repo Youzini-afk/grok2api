@@ -33,7 +33,7 @@ This repository builds on top of [chenyme/grok2api](https://github.com/chenyme/g
 | :-- | :-- |
 | Image | `ghcr.io/jiujiu532/grok2api:latest` |
 | Architecture | `linux/amd64` |
-| Base image | `python:3.13-alpine` |
+| Base image | `python:3.13-slim-bookworm` |
 | Default port | `8000` |
 | Data dir | `/app/data` |
 | Logs dir | `/app/logs` |
@@ -89,7 +89,40 @@ docker run -d `
   ghcr.io/jiujiu532/grok2api:latest
 ```
 
-### Option 3: From source
+### Option 3: Zeabur / cloud Dockerfile deploy
+
+This repository ships both `Dockerfile` and `zbpack.json`, so Zeabur can build it as a Dockerfile service. The Dockerfile uses `python:3.13-slim-bookworm` instead of Alpine to avoid slow native dependency builds (`curl-cffi`, `tiktoken`, etc.) in constrained cloud builders.
+
+Recommended Zeabur settings:
+
+| Setting | Value |
+| :-- | :-- |
+| Root Directory | `grok2api` if your connected repo has an outer wrapper directory |
+| Build Method | Dockerfile |
+| Volume | mount `/app/data` (required), optionally `/app/logs` |
+| Port | use Zeabur's injected `PORT`; no Dockerfile edit required |
+
+Recommended environment variables:
+
+```env
+SERVER_HOST=0.0.0.0
+SERVER_WORKERS=1
+ACCOUNT_STORAGE=local
+DATA_DIR=/app/data
+LOG_DIR=/app/logs
+GROK_APP_APP_URL=https://your-zeabur-domain
+GROK_APP_APP_KEY=strong-admin-password
+GROK_APP_API_KEY=api-key
+# Optional WebUI:
+GROK_APP_WEBUI_ENABLED=true
+GROK_APP_WEBUI_KEY=webui-password
+```
+
+> Zeabur does not deploy `docker-compose.yml` directly. The WARP / Privoxy / FlareSolverr anti-blocking stack needs multiple containers and privileged networking, so it is not recommended for Zeabur. Use an external proxy if Zeabur's egress IP is blocked.
+
+> If Zeabur stays at “building” with empty logs, first check that Root Directory points to the directory containing `Dockerfile`, then confirm the current slim-based Dockerfile is being used instead of an old Alpine build.
+
+### Option 4: From source
 
 Prerequisites: Python 3.13+ and [uv](https://docs.astral.sh/uv/getting-started/installation/).
 

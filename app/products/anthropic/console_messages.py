@@ -4,7 +4,7 @@
 """
 
 import asyncio
-from typing import Any, AsyncGenerator
+from typing import AsyncGenerator
 
 import orjson
 
@@ -149,6 +149,7 @@ async def create(
                             "content_block": {"type": "text", "text": ""},
                         })
 
+                        yield ": heartbeat\n\n"
                         async for event_type, data in stream_console_chat(
                             token, payload, timeout_s=timeout_s
                         ):

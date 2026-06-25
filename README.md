@@ -194,7 +194,7 @@ docker compose -f docker-compose.warp.yml up -d --no-deps grok2api
 ```
 
 > `--no-deps` 确保只重启 grok2api，WARP/Privoxy/FlareSolverr 继续运行不中断。
-> 
+>
 > `./data/` 中的配置（`config.toml`）和数据库（`accounts.db`）挂载在 volume 中，升级不会覆盖。
 
 ### 回滚
@@ -279,11 +279,11 @@ basic表示free账号，spuer和heavy 为付费
 
 | 模型名 | mode | 账号等级 | 备注 |
 | :-- | :-- | :-- | :-- |
-| `grok-4.20-fast` / `grok-4.3-fast` | fast | basic（优先高等级） | 
-| `grok-4.20-auto` | auto | super | 
-| `grok-4.20-expert` | expert | super | 
+| `grok-4.20-fast` / `grok-4.3-fast` | fast | basic（优先高等级） |
+| `grok-4.20-auto` | auto | super |
+| `grok-4.20-expert` | expert | super |
 | `grok-4.20-heavy` | heavy | heavy | |
-| `grok-4.3-beta` | grok-420-computer-use-sa | super | 
+| `grok-4.3-beta` | grok-420-computer-use-sa | super |
 | `grok-4.20-multi-agent-0309` | heavy | heavy |
 | `grok-4.20-0309-non-reasoning` | fast | basic |
 | `grok-4.20-0309` | auto | super |
@@ -419,6 +419,58 @@ curl http://localhost:8000/v1/chat/completions \
 | 图片/视频链接 403 | 设置 `app.app_url` 为公网地址（含 `https://`） |
 | Cloudflare 拦截 | 更换代理，或者切换防封版部署，再或者手动配置 `proxy.clearance.mode` |
 | 多 Worker 冲突 | 无冲突，调度器通过文件锁选举 leader |
+
+---
+
+## 更新日志
+
+### v0.1.7
+
+**新功能**
+
+- 🔌 **Console 原生工具调用支持**（[PR#24](https://github.com/jiujiu532/grok2api/pull/24)，感谢 @daoguademeng）
+  - Console 模型支持 OpenAI 兼容的 `tools` / `tool_choice` 参数
+  - 客户端 function tools（如 bash、read）可稳定产出 `tool_calls`
+  - Grok 内置工具（web_search、x_search 等 19 个）保持内部语义，不泄露为客户端 tool_calls
+  - 支持多轮 tool-call 上下文（assistant tool_calls + tool result 正确转换）
+  - 新增 738 行回归测试覆盖核心逻辑
+
+**优化**
+
+- 🔧 **Console 配额参数调整**：恢复周期从 15 分钟改为 30 分钟，轮换阈值从 15 改为 20，降低单号负载
+- 💓 **SSE 心跳保活**：所有流式接口在数据开始前发送心跳注释，防止思考期间连接超时
+- ⚡ **TXT 导入异步化**：大批量导入不再阻塞，接口立即返回，刷新在后台进行
+- 🔒 **依赖安全升级**：cryptography 48.0.1+、starlette 1.1.0+、python-multipart 0.0.31+
+
+**修复**
+
+- 🐛 修复 NSFW 初始化时生日已锁定的 429 报错（[PR#25](https://github.com/jiujiu532/grok2api/pull/25)，感谢 @Xaihi-nun）
+- 🐛 修复批量刷新结果未区分异常与临时失败的问题
+
+### v0.1.5 (2025-06-13)
+
+**优化**
+
+- 🔧 **批量刷新结果优化**：刷新账户时区分"凭证失效（异常）"和"临时失败（网络波动）"两种状态
+  - 前端提示更清晰：`刷新完成：成功 906，异常 40，临时失败 54`
+  - 后端性能优化：批量查询失败账户状态（从 N 次数据库查询降为 1 次）
+  - 异常账户自动进入"异常"筛选组，临时失败不影响账户状态
+
+- 🎯 **导入账户交互改进**（基于 [PR#13](https://github.com/jiujiu532/grok2api/pull/13)）
+  - 新增/导入弹窗中加入"导入后自动开启 NSFW"复选框（默认不勾选）
+  - 工具栏按钮互斥显示：勾选账号时显示批量操作按钮，未勾选显示全局按钮
+  - 去除全局配置 `account.auto_nsfw_on_import`，改为每次导入时手动选择
+
+- ⚙️ **并发数限制调整**
+  - 批量操作硬限制从 50 调整为 80
+  - 配置页并发数输入框添加 `min: 1, max: 80` 强制限制
+  - 防止用户输入超出范围的并发值导致后端压力过大
+
+**修复**
+
+- 🐛 修复配置页数字输入框 `min/max` 属性未生效的问题
+- 🐛 补充 `tokens.py` 缺失的 `Query` 导入（导致服务启动失败）
+- 🐛 补充翻译文件中缺失的 `autoNsfwOnImport` 和 `autoNsfwHint` 键
 
 ---
 

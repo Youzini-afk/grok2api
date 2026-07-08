@@ -112,6 +112,45 @@ class AdminTokenListPerformanceTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(items[0]["tags"], ["nsfw"])
         self.assertNotIn("ext", items[0])
 
+    def test_quota_brief_includes_grok_4_3(self):
+        brief = admin_tokens._quota_brief({
+            "grok_4_3": {"remaining": 7, "total": 9, "window_seconds": 7200},
+        })
+
+        self.assertEqual(brief["grok_4_3"], {"remaining": 7, "total": 9})
+
+    async def test_edit_token_rename_preserves_extra_quota_modes(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = LocalAccountRepository(Path(tmp) / "accounts.db")
+            await repo.initialize()
+            await repo.upsert_accounts([AccountUpsert(token="old-token", pool="heavy")])
+            await repo.patch_accounts([
+                AccountPatch(
+                    token="old-token",
+                    quota_heavy={"remaining": 1, "total": 2},
+                    quota_grok_4_3={"remaining": 3, "total": 4},
+                    quota_console={"remaining": 5, "total": 6},
+                )
+            ])
+
+            await admin_tokens.edit_token(
+                admin_tokens.EditTokenRequest(
+                    old_token="old-token",
+                    token="new-token",
+                    pool="heavy",
+                ),
+                repo=repo,
+            )
+            records = await repo.get_accounts(["new-token"])
+
+        qs = records[0].quota_set()
+        self.assertEqual(qs.heavy.to_dict()["remaining"], 1)
+        self.assertEqual(qs.heavy.to_dict()["total"], 2)
+        self.assertEqual(qs.grok_4_3.to_dict()["remaining"], 3)
+        self.assertEqual(qs.grok_4_3.to_dict()["total"], 4)
+        self.assertEqual(qs.console.to_dict()["remaining"], 5)
+        self.assertEqual(qs.console.to_dict()["total"], 6)
+
     async def test_local_repository_tolerates_legacy_blank_quota_json(self):
         with tempfile.TemporaryDirectory() as tmp:
             db_path = Path(tmp) / "accounts.db"
@@ -183,14 +222,14 @@ class AdminTokenListPerformanceTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(body["deleted"], 1)
         self.assertEqual(repo.deleted, ["expired-token"])
 
-    async def test_delete_invalid_tokens_fallback_keeps_active_accounts(self):
+    async def test_delete_invalid_tokens_fallback_keeps_active_and_expired_accounts(self):
         repo = _PagedRepo()
 
         response = await admin_tokens.delete_invalid_tokens(repo=repo)
 
         body = orjson.loads(response.body)
-        self.assertEqual(body["deleted"], 1)
-        self.assertEqual(repo.deleted, ["expired-token"])
+        self.assertEqual(body["deleted"], 0)
+        self.assertEqual(repo.deleted, [])
 
 
 if __name__ == "__main__":

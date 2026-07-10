@@ -610,14 +610,13 @@ class LocalAccountRepository:
                     SELECT token
                     FROM {_TBL}
                     WHERE deleted_at IS NULL
-                      AND status NOT IN (?, ?, ?, ?)
+                      AND status NOT IN (?, ?, ?)
                     ORDER BY updated_at DESC
                     """,
                     (
                         AccountStatus.ACTIVE.value,
                         AccountStatus.COOLING.value,
                         AccountStatus.DISABLED.value,
-                        AccountStatus.EXPIRED.value,  # EXPIRED 是配额误判，不当作垃圾删除
                     ),
                 )
                 return [row["token"] for row in rows]

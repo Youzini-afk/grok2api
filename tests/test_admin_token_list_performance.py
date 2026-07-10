@@ -222,14 +222,32 @@ class AdminTokenListPerformanceTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(body["deleted"], 1)
         self.assertEqual(repo.deleted, ["expired-token"])
 
-    async def test_delete_invalid_tokens_fallback_keeps_active_and_expired_accounts(self):
+    async def test_delete_invalid_tokens_fallback_deletes_expired_accounts(self):
         repo = _PagedRepo()
 
         response = await admin_tokens.delete_invalid_tokens(repo=repo)
 
         body = orjson.loads(response.body)
-        self.assertEqual(body["deleted"], 0)
-        self.assertEqual(repo.deleted, [])
+        self.assertEqual(body["deleted"], 1)
+        self.assertEqual(repo.deleted, ["expired-token"])
+
+    async def test_local_repository_invalid_fast_path_includes_expired_accounts(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = LocalAccountRepository(Path(tmp) / "accounts.db")
+            await repo.initialize()
+            await repo.upsert_accounts([
+                AccountUpsert(token="active-token"),
+                AccountUpsert(token="expired-token"),
+                AccountUpsert(token="disabled-token"),
+            ])
+            await repo.patch_accounts([
+                AccountPatch(token="expired-token", status=AccountStatus.EXPIRED),
+                AccountPatch(token="disabled-token", status=AccountStatus.DISABLED),
+            ])
+
+            tokens = await repo.list_invalid_tokens()
+
+        self.assertEqual(tokens, ["expired-token"])
 
 
 if __name__ == "__main__":

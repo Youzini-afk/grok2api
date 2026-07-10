@@ -195,7 +195,6 @@ async def _list_invalid_tokens(repo: "AccountRepository") -> list[str]:
         if item.get("status") not in (
             AccountStatus.ACTIVE.value,
             AccountStatus.COOLING.value,
-            AccountStatus.EXPIRED.value,
             AccountStatus.DISABLED.value,
         )
     ]
